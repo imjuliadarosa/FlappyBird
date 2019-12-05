@@ -8,15 +8,16 @@ package flappyBird;
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.Graphics;
-import java.awt.Rectangle;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
+import java.awt.event.WindowListener;
 import java.util.ArrayList;
-import java.util.Random;
 import javax.swing.JFrame;
 import javax.swing.Timer;
 /**
@@ -24,116 +25,90 @@ import javax.swing.Timer;
  * @author Julia
  */
 public class FlappyBird implements ActionListener, MouseListener, KeyListener{
-    //criando o objeto
-    public static FlappyBird flappyBird;// redundancia?
-    // criando e definindo valores imutaveis para o Jframe
-    //criando renderer em fb
+    
+    public static FlappyBird flappyBird;
     public Renderer renderer;
-    //criando the bird
-    public Rectangle bird;
-    // movimentação
-    public int ticks, yMotion, score;
-    // criando o vetor de canos
-    public ArrayList<Rectangle> columns;
-    //validadores
-    public boolean gameOver, started;
-    // randomização
-    public Random rand;
+    private Bird bird;
+    public int ticks, yMotion;
+    private final Meteor meteors;
+    private final Pipe pipes;
+    public boolean gameOver, started, paused = false;
     public Settings set;
+    Score score= new Score();
+    ArrayList<Score> scores= new ArrayList();
     
+    JSON json;
     
-    
-    // construtor do objeto
     public FlappyBird(){
-        
         JFrame jframe = new JFrame();
         Timer timer = new Timer(30, this);
-        set = new Settings();
         renderer = new Renderer();
-        rand = new Random();
+        set = new Settings();
         jframe.add(renderer);
         jframe.setTitle("Flappy Bird");
-        jframe.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         jframe.setSize(set.WIDTH, set.HEIGHT);
         jframe.addMouseListener(this);
         jframe.addKeyListener(this);
         jframe.setResizable(false);
+        jframe.setLocationRelativeTo(null);
         jframe.setVisible(true);
+        jframe.addWindowListener(new MyWindowListener());
         
-        bird = new Rectangle( set.WIDTH / 2 -10, set.HEIGHT / 2 -10, 20, 20);
-        columns = new ArrayList<Rectangle>();
-        addColumn(true);
-        addColumn(true);
+        bird = new Bird();
+        pipes = new Pipe();
+        meteors = new Meteor();
+        pipes.addPipe(true);
+        pipes.addPipe(true);
+        meteors.addMeteor();
+        
         
         timer.start();
     }
     
     @Override
     public void actionPerformed(ActionEvent e) {
+        
         int speed=10;
-        
         ticks++;
-        if(started){
-        for( int i = 0; i<columns.size(); i++){
-            Rectangle column = columns.get(i);
-            column.x-= speed;
-        }
-        
-        if(ticks % 2==0 && yMotion <15){
-            yMotion += 2;
-        }
-        
-        for( int i = 0; i<columns.size(); i++){
-            Rectangle column = columns.get(i);
-            if(column.x + column.width<0){
-                columns.remove(column);
-                if(column.y == 0){
-                    addColumn(false);
-                }
+        if(started&&!paused&&!gameOver){
+            if(pipes.running(speed)){
+                pipes.addPipe(false);
             }
-        }
+
+
+            if(meteors.running(speed)){
+                meteors.addMeteor();
+            }
         
-        bird.y+= yMotion;
+            if(ticks % 2==0 && yMotion <15){
+                yMotion += 2;
+            }
         
-        for(Rectangle column : columns){
-            
-            if(column.y == 0 && bird.x + bird.width / 2 > column.x + column.width / 2 -10 && bird.x + bird.width/ 2 < column.x +column.width/2 + 10){
-                score++;
+        
+        
+        
+        bird.setY(bird.getY(),yMotion);
+        
+        
+            //verifica se o passaro passou entre os canos
+            if(pipes.passThrough(bird.getBird())){
+                score.setPoints(score.getPoints()+1);
             }
             
-            if(column.intersects(bird)){
-                gameOver = true;
-                bird.x = column.x - bird.width;
+            //verifica se o passaro bateu nos canos ou no meteoro
+            if(pipes.intersects(bird.getBird())||meteors.intersects(bird.getBird())){
+                gameOver=true;
             }
-        }
-        if(bird.y > set.HEIGHT - 120 - bird.height || bird.y < 0){
+       
+        if(bird.getY() > set.HEIGHT - 120 - bird.getHeight() || bird.getY() < 0){
             gameOver = true;
         }
         if(gameOver){
-            bird.y = set.HEIGHT - 120- bird.height;
+            bird.setY(set.HEIGHT - 120 - bird.getHeight(),0);
         }
         }
         renderer.repaint();
         
-    }
-    
-    public void addColumn(boolean start){
-        int space = 300; 
-        int width = 100;
-        int height = 50 + rand.nextInt(300);
-        if(start){
-            columns.add(new Rectangle( set.WIDTH + width + columns.size()*300, set.HEIGHT - height - 120, width, height));
-        columns.add(new Rectangle( set.WIDTH + width + (columns.size()-1)*300, 0, width, set.HEIGHT - height - space));
-        }else{
-            columns.add(new Rectangle(columns.get(columns.size() -1).x + 600, set.HEIGHT - height - 120, width, height));
-            columns.add(new Rectangle(columns.get(columns.size()-1).x, 0, width, set.HEIGHT - height - space));
-        }
-        
-    }
-    
-    public void paintColumn(Graphics g, Rectangle column){
-        g.setColor(Color.green.darker());
-        g.fillRect(column.x, column.y, column.width, column.height);
     }
     
     public void repaint(Graphics g) {
@@ -149,38 +124,46 @@ public class FlappyBird implements ActionListener, MouseListener, KeyListener{
         g.setColor(Color.green);
         g.fillRect(0, set.HEIGHT - 120,  set.WIDTH, 20);
         
-        //criando the bird in graphics
-        g.setColor(Color.yellow);
-        g.fillRect(bird.x, bird.y, bird.width, bird.height);
+        //criando passaro, canos e meteoros
+            bird.paintBird(g);
+            pipes.paintPipe(g);
+            meteors.paintMeteor(g);
         
-        //gerando colunas
-        for(Rectangle column : columns){
-            paintColumn(g,column);
-        }
         
         g.setColor(Color.white);
         g.setFont(new Font("Arial", 1, 50));
         
         if(gameOver){
             g.drawString("game over", 275 , set.HEIGHT/2-50);
+            g.drawString("click to restart", 275 , set.HEIGHT/2-10);
         }
         if(!started){
             g.drawString("click to start", 275 , set.HEIGHT/2-50);
         }
         
+        if(paused){
+            g.drawString("paused", 275 , set.HEIGHT/2-50);
+            g.drawString("press ESC to resume", 275 , set.HEIGHT/2-10);
+        }
+        
         if(!gameOver && started){
-            g.drawString(String.valueOf(score),  set.WIDTH/2 - 25, 100);
+            g.drawString(String.valueOf(score.getPoints()),  set.WIDTH/2 - 25, 100);
         }
         
     }
     private void jump() {
         if(gameOver){
-            bird = new Rectangle( set.WIDTH / 2 -10, set.HEIGHT / 2 -10, 20, 20);
-            columns.clear();
+            bird = new Bird();
+            pipes.clear();
+            meteors.clear();
             yMotion=0;
-            score = 0;
-            addColumn(true);
-            addColumn(true);
+            System.out.println(score.getPoints());
+            //json.gravar(score);
+            scores.add(score);//não está adicionando os valores corretos
+            score.setPoints(0);
+            pipes.addPipe(true);
+            pipes.addPipe(true);
+            meteors.addMeteor();
             gameOver = false;
         }
         if(!started){
@@ -227,6 +210,34 @@ public class FlappyBird implements ActionListener, MouseListener, KeyListener{
     public void keyReleased(KeyEvent e) {
         if(e.getKeyCode() == KeyEvent.VK_SPACE){
             jump();
+        }else if (e.getKeyCode() == KeyEvent.VK_ESCAPE){
+            //esc para pausar
+                pause();
         }
+        
+    }
+
+    private void pause() {
+        if(paused){
+            paused = false;
+            
+        }else{
+            paused = true;
+            
+        }
+    }
+    
+    class MyWindowListener extends WindowAdapter {
+      @Override
+      public void windowClosing(WindowEvent e) {
+        jump();
+        e.getWindow().dispose();
+        for(Score scorex: scores){
+          System.out.print(scorex.getUser()+" ");
+          System.out.println(scorex.getPoints());
+        }
+        //json.gravar(scores);
+        System.exit(0);
+      }
     }
 }

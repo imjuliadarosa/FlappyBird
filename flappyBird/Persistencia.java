@@ -5,11 +5,16 @@
  */
 package flappyBird;
 
+import java.util.ArrayList;
+
 /**
  *
  * @author Julia
  */
-public class Settings {
-    //valores para frame
-    public final int WIDTH = 800, HEIGHT = 700;
+public interface Persistencia {
+
+        public boolean gravar(ArrayList<Score> scores);
+
+        public ArrayList<Score> ler();
+
 }
