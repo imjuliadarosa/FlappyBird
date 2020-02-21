@@ -81,4 +81,28 @@ public class JSON implements Persistencia {
             return null;
         }
     }
+        
+    @Override
+        public Score lerum() {
+        Score score = new Score();
+        try {
+            GsonBuilder builder = new GsonBuilder();
+            Gson gson = builder.create();
+            BufferedReader bufferedReader = new BufferedReader(new FileReader("scores.json"));
+            String linha = bufferedReader.readLine();
+			while (linha != null) {
+				String [] leitura = linha.split(";");
+                                score.setUser(leitura[0]);
+				score.setPoints(Integer.parseInt(leitura[1]));
+                                score.setDate(leitura[2], leitura[3]);
+				linha = bufferedReader.readLine();
+			}
+            bufferedReader.close();
+            return score;
+        } catch (IOException e) {
+            System.err.printf("Erro na abertura do arquivo : %s.\n", e.getMessage());
+            return null;
+        }
+        
+    }
 }

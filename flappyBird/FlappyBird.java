@@ -16,8 +16,9 @@ import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
-import java.awt.event.WindowListener;
 import java.util.ArrayList;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.swing.JFrame;
 import javax.swing.Timer;
 /**
@@ -34,7 +35,7 @@ public class FlappyBird implements ActionListener, MouseListener, KeyListener{
     private final Pipe pipes;
     public boolean gameOver, started, paused = false;
     public Settings set;
-    Score score= new Score();
+    private Score score= new Score();
     ArrayList<Score> scores= new ArrayList();
     
     JSON json;
@@ -153,14 +154,12 @@ public class FlappyBird implements ActionListener, MouseListener, KeyListener{
     }
     private void jump() {
         if(gameOver){
+            scores.add(score);
+            score= new Score();
             bird = new Bird();
             pipes.clear();
             meteors.clear();
             yMotion=0;
-            System.out.println(score.getPoints());
-            //json.gravar(score);
-            scores.add(score);//não está adicionando os valores corretos
-            score.setPoints(0);
             pipes.addPipe(true);
             pipes.addPipe(true);
             meteors.addMeteor();
@@ -226,17 +225,39 @@ public class FlappyBird implements ActionListener, MouseListener, KeyListener{
             
         }
     }
+    private void end(){
+         if(gameOver){
+            scores.add(score);
+            score= new Score();
+            bird = new Bird();
+            pipes.clear();
+            meteors.clear();
+            yMotion=0;
+             try {
+                 flappyBird.finalize();
+             } catch (Throwable ex) {
+                 Logger.getLogger(FlappyBird.class.getName()).log(Level.SEVERE, null, ex);
+             }
+        }else {
+            gameOver=true;
+            end();
+        }
+        
+    }
     
     class MyWindowListener extends WindowAdapter {
       @Override
       public void windowClosing(WindowEvent e) {
-        jump();
-        e.getWindow().dispose();
+        ArrayList<Score> scorew= new ArrayList();
         for(Score scorex: scores){
           System.out.print(scorex.getUser()+" ");
           System.out.println(scorex.getPoints());
+          scorew.add(scorex);
         }
-        //json.gravar(scores);
+        jump();
+        e.getWindow().dispose();
+        //end();
+        //json.gravar(scorew);
         System.exit(0);
       }
     }

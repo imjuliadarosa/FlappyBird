@@ -14,7 +14,11 @@ import java.util.ArrayList;
 public interface Persistencia {
 
         public boolean gravar(ArrayList<Score> scores);
+        
+        public boolean gravar(Score score);
 
         public ArrayList<Score> ler();
+        
+        public Score lerum();
 
 }
